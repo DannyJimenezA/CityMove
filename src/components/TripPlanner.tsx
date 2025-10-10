@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -6,15 +7,15 @@ import { Badge } from './ui/badge';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { Switch } from './ui/switch';
-import { 
-  ArrowLeft, 
-  MapPin, 
-  Navigation, 
-  Clock, 
+import {
+  ArrowLeft,
+  MapPin,
+  Navigation,
+  Clock,
   Filter,
-  Bus, 
-  Train, 
-  Car, 
+  Bus,
+  Train,
+  Car,
   Bike,
   Route,
   Star,
@@ -23,12 +24,8 @@ import {
   Zap
 } from 'lucide-react';
 
-interface TripPlannerProps {
-  onBack: () => void;
-  onStartTrip: (tripData: any) => void;
-}
-
-export function TripPlanner({ onBack, onStartTrip }: TripPlannerProps) {
+export function TripPlanner() {
+  const navigate = useNavigate();
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [departureTime, setDepartureTime] = useState('now');
@@ -130,7 +127,7 @@ export function TripPlanner({ onBack, onStartTrip }: TripPlannerProps) {
       startTime: new Date().toISOString(),
       status: 'active'
     };
-    onStartTrip(tripData);
+    navigate('/active-trip', { state: { tripData } });
   };
 
   return (
@@ -139,7 +136,7 @@ export function TripPlanner({ onBack, onStartTrip }: TripPlannerProps) {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-16">
-            <Button variant="ghost" size="sm" onClick={onBack} className="mr-4">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="mr-4">
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-xl font-semibold text-gray-900">Planificar viaje</h1>

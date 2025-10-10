@@ -1,75 +1,122 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Eye, EyeOff, MapPin, Users, Clock } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Eye, EyeOff, MapPin, Users, Clock, AlertCircle } from 'lucide-react';
 
-interface AuthScreenProps {
-  onLogin: (user: { name: string; email: string; id: string }) => void;
-}
-
-export function AuthScreen({ onLogin }: AuthScreenProps) {
+export function AuthScreen() {
+  const navigate = useNavigate();
+  const { signIn, signUp, resetPassword, isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [registerForm, setRegisterForm] = useState({ 
-    name: '', 
-    email: '', 
-    password: '', 
-    confirmPassword: '' 
+  const [registerForm, setRegisterForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
   });
+
+  // Redirigir si ya está autenticado
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      const mockUser = {
-        id: '1',
-        name: 'Usuario Demo',
-        email: loginForm.email || 'usuario@citymove.com'
-      };
-      onLogin(mockUser);
+    setError(null);
+
+    const { error } = await signIn(loginForm.email, loginForm.password);
+
+    if (error) {
+      setError(error.message || 'Error al iniciar sesión');
       setIsLoading(false);
-    }, 1500);
+    } else {
+      navigate('/dashboard');
+    }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
     if (registerForm.password !== registerForm.confirmPassword) {
-      alert('Las contraseñas no coinciden');
+      setError('Las contraseñas no coinciden');
       return;
     }
-    
+
+    if (registerForm.password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      const mockUser = {
-        id: '2',
-        name: registerForm.name,
-        email: registerForm.email
-      };
-      onLogin(mockUser);
+
+    const { error } = await signUp(
+      registerForm.email,
+      registerForm.password,
+      registerForm.name
+    );
+
+    if (error) {
+      setError(error.message || 'Error al crear la cuenta');
       setIsLoading(false);
-    }, 1500);
+    } else {
+      setSuccess('Cuenta creada exitosamente. Por favor verifica tu email.');
+      setIsLoading(false);
+      // Limpiar formulario
+      setRegisterForm({ name: '', email: '', password: '', confirmPassword: '' });
+    }
   };
 
-  const demoLogin = () => {
-    const mockUser = {
-      id: 'demo',
-      name: 'Usuario Demo',
-      email: 'demo@citymove.com'
-    };
-    onLogin(mockUser);
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setIsLoading(true);
+
+    const { error } = await resetPassword(resetEmail);
+
+    if (error) {
+      setError(error.message || 'Error al enviar el correo de recuperación');
+      setIsLoading(false);
+    } else {
+      setSuccess('Se ha enviado un correo de recuperación. Revisa tu bandeja de entrada.');
+      setIsLoading(false);
+      setResetEmail('');
+      setShowResetDialog(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
+        {/* Mensajes de error y éxito */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-start space-x-2">
+            <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-start space-x-2">
+            <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            <p className="text-sm">{success}</p>
+          </div>
+        )}
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center space-x-2 mb-4">
@@ -145,6 +192,51 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
                   </Button>
+
+                  {/* Enlace de recuperación de contraseña */}
+                  <div className="text-center">
+                    <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+                      <DialogTrigger asChild>
+                        <Button variant="link" className="text-sm text-blue-600 hover:text-blue-800">
+                          ¿Olvidaste tu contraseña?
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Recuperar contraseña</DialogTitle>
+                          <DialogDescription>
+                            Ingresa tu email y te enviaremos un enlace para restablecer tu contraseña.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleResetPassword} className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="reset-email">Email</Label>
+                            <Input
+                              id="reset-email"
+                              type="email"
+                              placeholder="tu@email.com"
+                              value={resetEmail}
+                              onChange={(e) => setResetEmail(e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => setShowResetDialog(false)}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button type="submit" className="flex-1" disabled={isLoading}>
+                              {isLoading ? 'Enviando...' : 'Enviar enlace'}
+                            </Button>
+                          </div>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </form>
               </TabsContent>
               
@@ -199,16 +291,6 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
                 </form>
               </TabsContent>
             </Tabs>
-            
-            <div className="mt-4 text-center">
-              <Button 
-                variant="outline" 
-                onClick={demoLogin}
-                className="w-full"
-              >
-                Probar con cuenta demo
-              </Button>
-            </div>
           </CardContent>
         </Card>
 

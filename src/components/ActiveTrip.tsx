@@ -1,22 +1,23 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
 import { NavigationMap } from './NavigationMap';
-import { 
-  ArrowLeft, 
-  MapPin, 
-  Navigation, 
-  Clock, 
+import {
+  ArrowLeft,
+  MapPin,
+  Navigation,
+  Clock,
   Pause,
   Play,
   X,
   AlertCircle,
   CheckCircle2,
-  Bus, 
-  Train, 
-  Car, 
+  Bus,
+  Train,
+  Car,
   Bike,
   Phone,
   MessageCircle,
@@ -24,13 +25,10 @@ import {
   Map
 } from 'lucide-react';
 
-interface ActiveTripProps {
-  tripData: any;
-  onBack: () => void;
-  onComplete: () => void;
-}
-
-export function ActiveTrip({ tripData, onBack, onComplete }: ActiveTripProps) {
+export function ActiveTrip() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const tripData = location.state?.tripData;
   const [currentStep, setCurrentStep] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(28 * 60); // 28 minutes in seconds
@@ -106,9 +104,14 @@ export function ActiveTrip({ tripData, onBack, onComplete }: ActiveTripProps) {
 
   const handleEndTrip = () => {
     if (confirm('¿Estás seguro de que quieres finalizar el viaje?')) {
-      onComplete();
+      navigate('/dashboard');
     }
   };
+
+  if (!tripData) {
+    navigate('/dashboard');
+    return null;
+  }
 
   const progressPercentage = ((tripData.route.modes.length - (tripData.route.modes.length - currentStep)) / tripData.route.modes.length) * 100;
 
@@ -119,7 +122,7 @@ export function ActiveTrip({ tripData, onBack, onComplete }: ActiveTripProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" onClick={onBack}>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>

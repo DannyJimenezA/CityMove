@@ -1,142 +1,78 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { tripService } from '../services/tripService';
+import type { Trip } from '../services/tripService';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import { 
-  ArrowLeft, 
-  History, 
+import {
+  ArrowLeft,
+  History,
   Search,
   Filter,
   Calendar,
-  Bus, 
-  Train, 
-  Car, 
+  Bus,
+  Train,
+  Car,
   Bike,
   MapPin,
   Clock,
   Star,
   ChevronRight,
   Download,
-  MoreVertical
+  MoreVertical,
+  Loader2
 } from 'lucide-react';
 
-interface TripHistoryProps {
-  onBack: () => void;
-  onRepeatTrip: (trip: any) => void;
-}
-
-export function TripHistory({ onBack, onRepeatTrip }: TripHistoryProps) {
+export function TripHistory() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock trip data
-  const trips = [
-    {
-      id: '1',
-      date: '2025-01-19',
-      time: '08:30',
-      from: 'Casa',
-      to: 'Oficina',
-      duration: '25 min',
-      cost: '$2.50',
-      modes: ['Bus', 'Metro'],
-      status: 'completed',
-      rating: 5,
-      co2Saved: '1.2 kg',
-      steps: [
-        { type: 'walk', duration: '5 min', instruction: 'Camina a la parada' },
-        { type: 'bus', duration: '15 min', instruction: 'Bus Línea 42' },
-        { type: 'metro', duration: '8 min', instruction: 'Metro Línea Azul' }
-      ]
-    },
-    {
-      id: '2',
-      date: '2025-01-18',
-      time: '18:45',
-      from: 'Oficina',
-      to: 'Centro Comercial',
-      duration: '18 min',
-      cost: '$1.80',
-      modes: ['Walk', 'Bus'],
-      status: 'completed',
-      rating: 4,
-      co2Saved: '0.8 kg',
-      steps: [
-        { type: 'walk', duration: '8 min', instruction: 'Camina a la parada' },
-        { type: 'bus', duration: '10 min', instruction: 'Bus Línea 23' }
-      ]
-    },
-    {
-      id: '3',
-      date: '2025-01-17',
-      time: '06:00',
-      from: 'Casa',
-      to: 'Aeropuerto',
-      duration: '45 min',
-      cost: '$4.20',
-      modes: ['Metro', 'Train'],
-      status: 'completed',
-      rating: 5,
-      co2Saved: '3.2 kg',
-      steps: [
-        { type: 'walk', duration: '5 min', instruction: 'Camina al metro' },
-        { type: 'metro', duration: '20 min', instruction: 'Metro Línea Verde' },
-        { type: 'train', duration: '20 min', instruction: 'Tren al Aeropuerto' }
-      ]
-    },
-    {
-      id: '4',
-      date: '2025-01-16',
-      time: '14:30',
-      from: 'Centro',
-      to: 'Universidad',
-      duration: '30 min',
-      cost: '$2.10',
-      modes: ['Bus', 'Walk'],
-      status: 'completed',
-      rating: 3,
-      co2Saved: '1.5 kg',
-      steps: [
-        { type: 'bus', duration: '25 min', instruction: 'Bus Línea Universidad' },
-        { type: 'walk', duration: '5 min', instruction: 'Camina al campus' }
-      ]
-    },
-    {
-      id: '5',
-      date: '2025-01-15',
-      time: '19:15',
-      from: 'Gimnasio',
-      to: 'Casa',
-      duration: '22 min',
-      cost: '$2.00',
-      modes: ['Metro'],
-      status: 'completed',
-      rating: 5,
-      co2Saved: '1.0 kg',
-      steps: [
-        { type: 'walk', duration: '3 min', instruction: 'Camina al metro' },
-        { type: 'metro', duration: '15 min', instruction: 'Metro Línea Roja' },
-        { type: 'walk', duration: '4 min', instruction: 'Camina a casa' }
-      ]
-    },
-    {
-      id: '6',
-      date: '2025-01-14',
-      time: '12:00',
-      from: 'Casa',
-      to: 'Hospital',
-      duration: '35 min',
-      cost: '$3.00',
-      modes: ['Bus', 'Walk'],
-      status: 'cancelled',
-      rating: 0,
-      co2Saved: '0 kg',
-      steps: []
-    }
-  ];
+  // Cargar viajes del usuario desde Supabase
+  useEffect(() => {
+    const loadTrips = async () => {
+      if (!user) return;
+
+      try {
+        setLoading(true);
+        const userTrips = await tripService.getUserTrips(user.id);
+        setTrips(userTrips);
+      } catch (error) {
+        console.error('Error loading trips:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTrips();
+  }, [user]);
+
+  // Filtrar viajes por búsqueda y filtros
+  const filteredTrips = trips.filter((trip) => {
+    const matchesSearch =
+      searchTerm === '' ||
+      trip.origin.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      trip.destination.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Obtener los modos de transporte del route_data
+    const modes = trip.route_data?.modes || [];
+
+    const matchesFilter =
+      selectedFilter === 'all' ||
+      trip.status === selectedFilter ||
+      (selectedFilter === 'bus' && modes.some((mode: string) => mode.toLowerCase() === 'bus')) ||
+      (selectedFilter === 'metro' && modes.some((mode: string) => mode.toLowerCase().includes('metro'))) ||
+      (selectedFilter === 'train' && modes.some((mode: string) => mode.toLowerCase() === 'train'));
+
+    return matchesSearch && matchesFilter;
+  });
 
   const getModeIcon = (mode: string) => {
     switch (mode.toLowerCase()) {
@@ -167,31 +103,13 @@ export function TripHistory({ onBack, onRepeatTrip }: TripHistoryProps) {
     }
   };
 
-  const filteredTrips = trips.filter(trip => {
-    const matchesSearch = 
-      trip.from.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      trip.to.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      trip.modes.some(mode => mode.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesFilter = 
-      selectedFilter === 'all' ||
-      (selectedFilter === 'completed' && trip.status === 'completed') ||
-      (selectedFilter === 'cancelled' && trip.status === 'cancelled') ||
-      (selectedFilter === 'bus' && trip.modes.some(mode => mode.toLowerCase() === 'bus')) ||
-      (selectedFilter === 'metro' && trip.modes.some(mode => mode.toLowerCase().includes('metro'))) ||
-      (selectedFilter === 'train' && trip.modes.some(mode => mode.toLowerCase() === 'train'));
-    
-    return matchesSearch && matchesFilter;
-  });
-
+  // Calcular estadísticas totales de viajes completados
+  const completedTrips = trips.filter(t => t.status === 'completed');
   const totalStats = {
-    totalTrips: trips.filter(t => t.status === 'completed').length,
-    totalCost: trips.filter(t => t.status === 'completed').reduce((sum, trip) => sum + parseFloat(trip.cost.replace('$', '')), 0),
-    totalTime: trips.filter(t => t.status === 'completed').reduce((sum, trip) => {
-      const minutes = parseInt(trip.duration.split(' ')[0]);
-      return sum + minutes;
-    }, 0),
-    totalCO2: trips.filter(t => t.status === 'completed').reduce((sum, trip) => sum + parseFloat(trip.co2Saved.split(' ')[0]), 0)
+    totalTrips: completedTrips.length,
+    totalCost: completedTrips.reduce((sum, trip) => sum + (trip.cost || 0), 0),
+    totalTime: completedTrips.reduce((sum, trip) => sum + (trip.duration_minutes || 0), 0),
+    totalCO2: completedTrips.reduce((sum, trip) => sum + (trip.co2_saved || 0), 0)
   };
 
   const formatTime = (minutes: number) => {
@@ -207,7 +125,7 @@ export function TripHistory({ onBack, onRepeatTrip }: TripHistoryProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" onClick={onBack}>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <h1 className="text-xl font-semibold text-gray-900">Historial de viajes</h1>
@@ -301,111 +219,146 @@ export function TripHistory({ onBack, onRepeatTrip }: TripHistoryProps) {
 
           {/* Trip List */}
           <div className="space-y-4">
-            {filteredTrips.length === 0 ? (
+            {loading ? (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
+                  <p className="text-gray-600">Cargando viajes...</p>
+                </CardContent>
+              </Card>
+            ) : filteredTrips.length === 0 ? (
               <Card>
                 <CardContent className="text-center py-12">
                   <History className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    No se encontraron viajes
+                    {trips.length === 0 ? 'No tienes viajes aún' : 'No se encontraron viajes'}
                   </h3>
                   <p className="text-gray-600">
-                    Intenta ajustar tus filtros de búsqueda
+                    {trips.length === 0 ? 'Planifica tu primer viaje para verlo aquí' : 'Intenta ajustar tus filtros de búsqueda'}
                   </p>
+                  {trips.length === 0 && (
+                    <Button onClick={() => navigate('/trip-planner')} className="mt-4">
+                      Planificar viaje
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ) : (
-              filteredTrips.map((trip) => (
-                <Card key={trip.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-semibold text-lg">
-                            {trip.from} → {trip.to}
-                          </h3>
-                          <Badge className={getStatusColor(trip.status)}>
-                            {getStatusText(trip.status)}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-                          <span className="flex items-center space-x-1">
-                            <Calendar className="h-4 w-4" />
-                            <span>{trip.date}</span>
-                          </span>
-                          <span className="flex items-center space-x-1">
-                            <Clock className="h-4 w-4" />
-                            <span>{trip.time}</span>
-                          </span>
-                          <span>{trip.duration}</span>
-                          <span>{trip.cost}</span>
-                        </div>
-                        
-                        {/* Transportation modes */}
-                        <div className="flex items-center space-x-2 mb-3">
-                          {trip.modes.map((mode, index) => (
-                            <div key={index} className="flex items-center space-x-1">
-                              <div className="flex items-center space-x-1 bg-gray-100 rounded-full px-2 py-1">
-                                {getModeIcon(mode)}
-                                <span className="text-xs">{mode}</span>
-                              </div>
-                              {index < trip.modes.length - 1 && (
-                                <ChevronRight className="h-3 w-3 text-gray-400" />
-                              )}
-                            </div>
-                          ))}
-                        </div>
+              filteredTrips.map((trip) => {
+                // Extraer datos del trip
+                const date = trip.created_at ? new Date(trip.created_at).toLocaleDateString('es-ES', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                }) : '';
+                const time = trip.start_time || (trip.created_at ? new Date(trip.created_at).toLocaleTimeString('es-ES', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }) : '');
+                const modes = trip.route_data?.modes || [];
+                const steps = trip.route_data?.steps || [];
+                const duration = trip.duration_minutes ? `${trip.duration_minutes} min` : '';
+                const cost = trip.cost ? `$${trip.cost.toFixed(2)}` : '';
 
-                        {/* Trip details for completed trips */}
-                        {trip.status === 'completed' && (
-                          <div className="flex items-center space-x-4 text-sm">
-                            <div className="flex">
-                              {Array.from({ length: trip.rating }).map((_, i) => (
-                                <Star key={i} className="h-4 w-4 text-yellow-500 fill-current" />
+                return (
+                  <Card key={trip.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-semibold text-lg">
+                              {trip.origin} → {trip.destination}
+                            </h3>
+                            <Badge className={getStatusColor(trip.status)}>
+                              {getStatusText(trip.status)}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                            <span className="flex items-center space-x-1">
+                              <Calendar className="h-4 w-4" />
+                              <span>{date}</span>
+                            </span>
+                            <span className="flex items-center space-x-1">
+                              <Clock className="h-4 w-4" />
+                              <span>{time}</span>
+                            </span>
+                            {duration && <span>{duration}</span>}
+                            {cost && <span>{cost}</span>}
+                          </div>
+
+                          {/* Transportation modes */}
+                          {modes.length > 0 && (
+                            <div className="flex items-center space-x-2 mb-3">
+                              {modes.map((mode: string, index: number) => (
+                                <div key={index} className="flex items-center space-x-1">
+                                  <div className="flex items-center space-x-1 bg-gray-100 rounded-full px-2 py-1">
+                                    {getModeIcon(mode)}
+                                    <span className="text-xs">{mode}</span>
+                                  </div>
+                                  {index < modes.length - 1 && (
+                                    <ChevronRight className="h-3 w-3 text-gray-400" />
+                                  )}
+                                </div>
                               ))}
                             </div>
-                            <span className="text-green-600">🌱 {trip.co2Saved} CO₂ ahorrado</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center space-x-2 ml-4">
-                        {trip.status === 'completed' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onRepeatTrip(trip)}
-                          >
-                            Repetir viaje
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
+                          )}
 
-                    {/* Expandable trip steps for completed trips */}
-                    {trip.status === 'completed' && trip.steps.length > 0 && (
-                      <details className="group">
-                        <summary className="cursor-pointer text-sm text-blue-600 hover:text-blue-800">
-                          Ver detalles del viaje
-                        </summary>
-                        <div className="mt-3 pt-3 border-t space-y-2">
-                          {trip.steps.map((step, index) => (
-                            <div key={index} className="flex items-center space-x-3 text-sm">
-                              <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
-                                {getModeIcon(step.type)}
-                              </div>
-                              <span className="text-gray-600">{step.instruction}</span>
-                              <span className="text-gray-400">({step.duration})</span>
+                          {/* Trip details for completed trips */}
+                          {trip.status === 'completed' && (
+                            <div className="flex items-center space-x-4 text-sm">
+                              {trip.rating && trip.rating > 0 && (
+                                <div className="flex">
+                                  {Array.from({ length: trip.rating || 0 }).map((_, i) => (
+                                    <Star key={i} className="h-4 w-4 text-yellow-500 fill-current" />
+                                  ))}
+                                </div>
+                              )}
+                              {trip.co2_saved && trip.co2_saved > 0 && (
+                                <span className="text-green-600">🌱 {trip.co2_saved.toFixed(1)} kg CO₂ ahorrado</span>
+                              )}
                             </div>
-                          ))}
+                          )}
                         </div>
-                      </details>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
+
+                        <div className="flex items-center space-x-2 ml-4">
+                          {trip.status === 'completed' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate('/trip-planner', { state: { trip } })}
+                            >
+                              Repetir viaje
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Expandable trip steps for completed trips */}
+                      {trip.status === 'completed' && steps.length > 0 && (
+                        <details className="group">
+                          <summary className="cursor-pointer text-sm text-blue-600 hover:text-blue-800">
+                            Ver detalles del viaje
+                          </summary>
+                          <div className="mt-3 pt-3 border-t space-y-2">
+                            {steps.map((step: any, index: number) => (
+                              <div key={index} className="flex items-center space-x-3 text-sm">
+                                <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
+                                  {getModeIcon(step.type || step.mode || 'walk')}
+                                </div>
+                                <span className="text-gray-600">{step.instruction || step.description || 'Paso del viaje'}</span>
+                                <span className="text-gray-400">({step.duration || step.duration_minutes ? `${step.duration_minutes} min` : ''})</span>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })
             )}
           </div>
 
