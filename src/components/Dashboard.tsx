@@ -72,11 +72,14 @@ export function Dashboard() {
     loadDashboardData();
   }, [user]);
 
-  const getModeIcon = (mode: string) => {
+  const getModeIcon = (mode: string | undefined | null) => {
+    if (!mode) return <MapPin className="h-4 w-4" />;
+
     switch (mode.toLowerCase()) {
       case 'bus': return <Bus className="h-4 w-4" />;
       case 'metro': case 'tren': return <Train className="h-4 w-4" />;
       case 'car': case 'taxi': return <Car className="h-4 w-4" />;
+      case 'walk': case 'walking': case 'caminata': return <MapPin className="h-4 w-4" />;
       default: return <MapPin className="h-4 w-4" />;
     }
   };
@@ -289,6 +292,7 @@ export function Dashboard() {
                   {recentTrips.map((trip) => {
                     const date = trip.created_at ? new Date(trip.created_at).toLocaleDateString() : '';
                     const time = trip.start_time ? new Date(trip.start_time).toLocaleTimeString() : '';
+                    // Los modos pueden ser strings o objetos con type
                     const modes = trip.route_data?.modes || [];
 
                     return (
@@ -301,7 +305,7 @@ export function Dashboard() {
                             <div className="flex items-center space-x-2">
                               {modes.slice(0, 3).map((mode: any, index: number) => (
                                 <div key={index} className="flex items-center">
-                                  {getModeIcon(mode.type)}
+                                  {getModeIcon(typeof mode === 'string' ? mode : mode?.type)}
                                   {index < Math.min(modes.length, 3) - 1 && (
                                     <ChevronRight className="h-3 w-3 mx-1 text-gray-400" />
                                   )}

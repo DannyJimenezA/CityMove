@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import { AuthScreen } from './components/AuthScreen';
+import { ForgotPassword } from './components/ForgotPassword';
+import { ResetPassword } from './components/ResetPassword';
 import { Dashboard } from './components/Dashboard';
 import { TripPlanner } from './components/TripPlanner';
 import { ActiveTrip } from './components/ActiveTrip';
@@ -14,8 +16,10 @@ export default function App() {
       <AuthProvider>
         <div className="min-h-screen bg-gray-50">
           <Routes>
-            {/* Ruta pública */}
+            {/* Rutas públicas */}
             <Route path="/" element={<AuthScreen />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Rutas protegidas */}
             <Route

@@ -7,6 +7,10 @@ import { Badge } from './ui/badge';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { Switch } from './ui/switch';
+import { Alert, AlertDescription } from './ui/alert';
+import { LocationAutocomplete } from './LocationAutocomplete';
+import type { Location } from '../data/locations';
+import { getDirections, type TripRoute } from '../services/mapsService';
 import {
   ArrowLeft,
   MapPin,
@@ -21,13 +25,17 @@ import {
   Star,
   Accessibility,
   DollarSign,
-  Zap
+  Zap,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 
 export function TripPlanner() {
   const navigate = useNavigate();
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
+  const [selectedOrigin, setSelectedOrigin] = useState<Location | null>(null);
+  const [selectedDestination, setSelectedDestination] = useState<Location | null>(null);
   const [departureTime, setDepartureTime] = useState('now');
   const [customTime, setCustomTime] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -38,8 +46,9 @@ export function TripPlanner() {
     ecoFriendly: false,
     maxWalking: 10
   });
-  const [routes, setRoutes] = useState<any[]>([]);
+  const [routes, setRoutes] = useState<TripRoute[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Mock route data
   const mockRoutes = [
@@ -105,24 +114,63 @@ export function TripPlanner() {
 
   const handleSearch = async () => {
     if (!origin.trim() || !destination.trim()) {
-      alert('Por favor ingresa origen y destino');
+      setError('Por favor ingresa origen y destino');
+      return;
+    }
+
+    if (!selectedOrigin || !selectedDestination) {
+      setError('Por favor selecciona ubicaciones de la lista');
       return;
     }
 
     setIsSearching(true);
-    
-    // Simulate API search
-    setTimeout(() => {
-      setRoutes(mockRoutes);
+    setError(null);
+
+    try {
+      const foundRoutes = await getDirections(selectedOrigin, selectedDestination);
+
+      // Aplicar filtros
+      let filteredRoutes = foundRoutes;
+
+      if (filters.accessible) {
+        filteredRoutes = filteredRoutes.filter(r => r.accessibility);
+      }
+
+      if (filters.maxWalking) {
+        filteredRoutes = filteredRoutes.filter(
+          r => r.walkingMeters <= filters.maxWalking * 1000
+        );
+      }
+
+      // Ordenar según preferencias
+      if (filters.fastest) {
+        filteredRoutes.sort((a, b) => a.durationMinutes - b.durationMinutes);
+      } else if (filters.cheapest) {
+        filteredRoutes.sort((a, b) => a.costValue - b.costValue);
+      } else if (filters.ecoFriendly) {
+        filteredRoutes.sort((a, b) => b.co2Value - a.co2Value);
+      }
+
+      setRoutes(filteredRoutes);
+
+      if (filteredRoutes.length === 0) {
+        setError('No se encontraron rutas disponibles con los filtros seleccionados');
+      }
+    } catch (err) {
+      console.error('Error searching routes:', err);
+      setError('Error al buscar rutas. Verifica tu conexión o la configuración de Google Maps API.');
+    } finally {
       setIsSearching(false);
-    }, 2000);
+    }
   };
 
-  const handleStartTrip = (route: any) => {
+  const handleStartTrip = (route: TripRoute) => {
     const tripData = {
       id: Date.now().toString(),
-      origin,
-      destination,
+      origin: selectedOrigin?.name || origin,
+      destination: selectedDestination?.name || destination,
+      originLocation: selectedOrigin,
+      destinationLocation: selectedDestination,
       route,
       startTime: new Date().toISOString(),
       status: 'active'
@@ -155,24 +203,43 @@ export function TripPlanner() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="origin">Desde</Label>
-                  <Input
+                  <LocationAutocomplete
                     id="origin"
-                    placeholder="Tu ubicación actual"
+                    placeholder="Escribe tu ubicación de origen..."
                     value={origin}
-                    onChange={(e) => setOrigin(e.target.value)}
+                    onChange={(value) => setOrigin(value)}
+                    onLocationSelect={(location) => setSelectedOrigin(location)}
                   />
+                  {selectedOrigin && (
+                    <p className="text-xs text-gray-500">
+                      📍 {selectedOrigin.address}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="destination">Hasta</Label>
-                  <Input
+                  <LocationAutocomplete
                     id="destination"
-                    placeholder="¿A dónde quieres ir?"
+                    placeholder="Escribe tu destino..."
                     value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
+                    onChange={(value) => setDestination(value)}
+                    onLocationSelect={(location) => setSelectedDestination(location)}
                   />
+                  {selectedDestination && (
+                    <p className="text-xs text-gray-500">
+                      📍 {selectedDestination.address}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -204,12 +271,19 @@ export function TripPlanner() {
                     <Filter className="h-4 w-4 mr-2" />
                     Filtros
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleSearch}
                     className="flex-1"
                     disabled={isSearching}
                   >
-                    {isSearching ? 'Buscando...' : 'Buscar rutas'}
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Buscando rutas...
+                      </>
+                    ) : (
+                      'Buscar rutas'
+                    )}
                   </Button>
                 </div>
               </div>
@@ -313,13 +387,13 @@ export function TripPlanner() {
 
                     {/* Route Steps */}
                     <div className="flex items-center space-x-2 overflow-x-auto">
-                      {route.modes.map((mode: any, index: number) => (
+                      {route.steps.map((step, index) => (
                         <div key={index} className="flex items-center space-x-2 min-w-0">
                           <div className="flex items-center space-x-1 bg-gray-100 rounded-full px-3 py-1">
-                            {getModeIcon(mode.type)}
-                            <span className="text-sm font-medium whitespace-nowrap">{mode.duration}</span>
+                            {getModeIcon(step.type)}
+                            <span className="text-sm font-medium whitespace-nowrap">{step.duration}</span>
                           </div>
-                          {index < route.modes.length - 1 && (
+                          {index < route.steps.length - 1 && (
                             <div className="h-px w-4 bg-gray-300"></div>
                           )}
                         </div>
@@ -328,13 +402,13 @@ export function TripPlanner() {
 
                     {/* Detailed Instructions */}
                     <div className="mt-4 space-y-2">
-                      {route.modes.map((mode: any, index: number) => (
+                      {route.steps.map((step, index) => (
                         <div key={index} className="flex items-center space-x-3 text-sm">
                           <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
-                            {getModeIcon(mode.type)}
+                            {getModeIcon(step.type)}
                           </div>
-                          <span className="text-gray-600">{mode.instruction}</span>
-                          <span className="text-gray-400">({mode.duration})</span>
+                          <span className="text-gray-600">{step.instruction}</span>
+                          <span className="text-gray-400">({step.duration})</span>
                         </div>
                       ))}
                     </div>

@@ -195,47 +195,14 @@ export function AuthScreen() {
 
                   {/* Enlace de recuperación de contraseña */}
                   <div className="text-center">
-                    <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-                      <DialogTrigger asChild>
-                        <Button variant="link" className="text-sm text-blue-600 hover:text-blue-800">
-                          ¿Olvidaste tu contraseña?
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Recuperar contraseña</DialogTitle>
-                          <DialogDescription>
-                            Ingresa tu email y te enviaremos un enlace para restablecer tu contraseña.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleResetPassword} className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="reset-email">Email</Label>
-                            <Input
-                              id="reset-email"
-                              type="email"
-                              placeholder="tu@email.com"
-                              value={resetEmail}
-                              onChange={(e) => setResetEmail(e.target.value)}
-                              required
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="flex-1"
-                              onClick={() => setShowResetDialog(false)}
-                            >
-                              Cancelar
-                            </Button>
-                            <Button type="submit" className="flex-1" disabled={isLoading}>
-                              {isLoading ? 'Enviando...' : 'Enviar enlace'}
-                            </Button>
-                          </div>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                      onClick={() => navigate('/forgot-password')}
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </Button>
                   </div>
                 </form>
               </TabsContent>

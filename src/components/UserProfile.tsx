@@ -80,12 +80,12 @@ export function UserProfile() {
         // Actualizar preferencias si existen
         if (userPreferences) {
           setPreferences({
-            notifications: userPreferences.notifications_enabled ?? true,
+            notifications: userPreferences.notifications ?? true,
             locationTracking: userPreferences.location_tracking ?? true,
             accessibilityMode: userPreferences.accessibility_mode ?? false,
-            ecoFriendly: userPreferences.preferred_transport_mode?.includes('eco') ?? true,
-            autoSave: userPreferences.auto_save_trips ?? true,
-            dataCollection: userPreferences.data_collection_consent ?? false
+            ecoFriendly: userPreferences.eco_friendly ?? true,
+            autoSave: userPreferences.auto_save ?? true,
+            dataCollection: userPreferences.data_collection ?? false
           });
         }
 
@@ -116,7 +116,7 @@ export function UserProfile() {
 
     try {
       setSaving(true);
-      await profileService.updateProfile(user.id, {
+      await profileService.updateUserProfile(user.id, {
         full_name: editedUser.name
       });
       setIsEditing(false);
@@ -138,21 +138,25 @@ export function UserProfile() {
     // Guardar en Supabase
     try {
       const preferencesMap: Record<string, string> = {
-        notifications: 'notifications_enabled',
+        notifications: 'notifications',
         locationTracking: 'location_tracking',
         accessibilityMode: 'accessibility_mode',
-        autoSave: 'auto_save_trips',
-        dataCollection: 'data_collection_consent'
+        ecoFriendly: 'eco_friendly',
+        autoSave: 'auto_save',
+        dataCollection: 'data_collection'
       };
 
       const dbKey = preferencesMap[key];
       if (dbKey) {
-        await profileService.updatePreferences(user.id, {
+        await profileService.updateUserPreferences(user.id, {
           [dbKey]: value
         });
       }
     } catch (error) {
       console.error('Error saving preference:', error);
+      // Revertir el cambio local si falla
+      setPreferences({ ...preferences, [key]: !value });
+      alert('Error al actualizar la preferencia');
     }
   };
 
