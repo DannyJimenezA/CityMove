@@ -3,17 +3,7 @@
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/forgot-password",
-      "dest": "/forgot-password.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "use": "@vercel/next"
     }
   ]
 }
