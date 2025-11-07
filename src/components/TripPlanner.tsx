@@ -373,6 +373,7 @@ export function TripPlanner() {
                             )}
                           </div>
                           <div className="flex items-center space-x-4 text-sm text-gray-600">
+                            <span>📍 {route.distance}</span>
                             <span>🚶 {route.walking}</span>
                             <span>💰 {route.cost}</span>
                             <span>🌱 {route.co2} CO₂</span>
@@ -407,7 +408,8 @@ export function TripPlanner() {
                           <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
                             {getModeIcon(step.type)}
                           </div>
-                          <span className="text-gray-600">{step.instruction}</span>
+                          <span className="text-gray-600 flex-1">{step.instruction}</span>
+                          <span className="text-gray-500">{step.distance}</span>
                           <span className="text-gray-400">({step.duration})</span>
                         </div>
                       ))}

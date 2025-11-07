@@ -107,6 +107,18 @@ export function ActiveTrip() {
     }
   };
 
+  const getModeName = (type: RouteStep['type']): string => {
+    switch (type) {
+      case 'bus': return 'Bus';
+      case 'metro': return 'Metro';
+      case 'train': return 'Tren';
+      case 'walk': return 'Caminata';
+      case 'bike': return 'Bicicleta';
+      case 'transit': return 'Tránsito';
+      default: return 'Transporte';
+    }
+  };
+
   const getStepStatus = (index: number) => {
     if (index < currentStep) return 'completed';
     if (index === currentStep) return 'active';
@@ -292,7 +304,7 @@ export function ActiveTrip() {
                               <span className={`text-sm font-medium ${
                                 stepStatus === 'active' ? 'text-blue-600' : 'text-gray-700'
                               }`}>
-                                {step.type.charAt(0).toUpperCase() + step.type.slice(1)}
+                                {getModeName(step.type)}
                               </span>
                               <Badge variant="outline" className="text-xs">
                                 {step.duration}
@@ -509,7 +521,7 @@ export function ActiveTrip() {
                         <div className="flex items-center space-x-2 mb-1">
                           {getModeIcon(step.type)}
                           <span className="text-sm font-medium">
-                            {step.type.charAt(0).toUpperCase() + step.type.slice(1)}
+                            {getModeName(step.type)}
                           </span>
                           {step.transitDetails && (
                             <Badge variant="outline" className="text-xs">
